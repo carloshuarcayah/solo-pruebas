@@ -3,13 +3,17 @@ from pydantic import BaseModel, Field, EmailStr
 
 
 class User(BaseModel):
-    name: str = Field(..., min_length=1)
-    last_name: str = Field(..., min_length=1)
-    email: EmailStr = Field(..., min_length=1)
-    dni: int = Field(..., max_digits=8, gt=0)
-    telefono: int = Field(..., max_digits=9, gt=0)
+    nombre: str = Field(..., min_length=1)
+    apellido: str = Field(..., min_length=1)
+    dni: int = Field(..., gt=0, lt=100000000)
+    telefono: int = Field(..., gt=0, lt=1000000000)
+    contraseña: str = Field(..., min_length=6)
 
 
-class UserResponse(User):
+class UserResponse(BaseModel):
     id: int
+    nombre: str
+    apellido: str
+    dni: str
+    telefono: str
 
