@@ -12,16 +12,14 @@ app = FastAPI()
 async def create_user(user: User):
     connection = await get_connection()
     try:
-        tel = str(user.telefono)
-        telefono_fmt = f"{tel[:3]}-{tel[3:6]}-{tel[6:9]}"
-        hashed_password = hashlib.sha256(user.contraseña.encode()).hexdigest()
+        hashed_password = hashlib.sha256(user.password.encode()).hexdigest()
         row = await connection.fetchrow(
             """
-            INSERT INTO Usuarios (nombre, apellido, dni, telefono, contraseña)
+            INSERT INTO Usuarios (nombre, apellido, dni, telefono, password)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING id, nombre, apellido, dni, telefono
             """,
-            user.nombre, user.apellido, str(user.dni), telefono_fmt, hashed_password
+            user.nombre, user.apellido, str(user.dni), str(user.telefono), hashed_password
         )
         return dict(row)
     except Exception as e:
