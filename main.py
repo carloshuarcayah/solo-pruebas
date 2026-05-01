@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from app.model.connection import get_connection
-from app.schemas.models import User, UserResponse
+from app.schemas.models import User, UserResponse, LoginRequest, TokenResponse
+from app.auth.jwt_handler import hash_password, verify_password, create_access_token, get_current_user
 from loguru import logger
-import hashlib
 
 
 app = FastAPI()
@@ -12,7 +12,7 @@ app = FastAPI()
 async def create_user(user: User):
     connection = await get_connection()
     try:
-        hashed_password = hashlib.sha256(user.password.encode()).hexdigest()
+        hashed_password = hash_password(user.password)
         row = await connection.fetchrow(
             """
             INSERT INTO Usuarios (nombre, apellido, dni, telefono, password)
@@ -29,8 +29,24 @@ async def create_user(user: User):
         await connection.close()
 
 
+@app.post("/login", response_model=TokenResponse)
+async def login(credentials: LoginRequest):
+    connection = await get_connection()
+    try:
+        row = await connection.fetchrow(
+            "SELECT id, password FROM Usuarios WHERE dni = $1",
+            credentials.dni
+        )
+        if not row or not verify_password(credentials.password, row["password"]):
+            raise HTTPException(status_code=401, detail="DNI o contraseña incorrectos")
+        token = create_access_token(data={"sub": str(row["id"])})
+        return {"access_token": token, "token_type": "bearer"}
+    finally:
+        await connection.close()
+
+
 @app.get("/users/information", response_model=list[UserResponse])
-async def get_user_information():
+async def get_user_information(current_user: dict = Depends(get_current_user)):
     connection = await get_connection()
     try:
         rows = await connection.fetch(
