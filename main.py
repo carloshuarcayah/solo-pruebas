@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from app.model.connection import get_connection
 from app.schemas.models import User, UserResponse, LoginRequest, TokenResponse
 from app.auth.jwt_handler import hash_password, verify_password, create_access_token, get_current_user
@@ -6,6 +7,18 @@ from loguru import logger
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4200",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/users/", response_model=UserResponse)
