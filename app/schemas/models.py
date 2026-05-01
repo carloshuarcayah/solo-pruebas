@@ -17,3 +17,13 @@ class UserResponse(BaseModel):
     dni: str
     telefono: str
 
+
+class LoginRequest(BaseModel):
+    dni: str = Field(..., min_length=1, max_length=8, pattern=r'^\d+$')
+    password: str = Field(..., min_length=6)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
