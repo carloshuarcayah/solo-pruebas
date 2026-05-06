@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
 
 
 
@@ -26,4 +27,14 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class Court(BaseModel):
+    id: int
+    nombre: str
+    ubicacion: str
+    disponible: bool
+    cantidad_jugadores: int
+    precio: float
+    fecha: datetime
 
