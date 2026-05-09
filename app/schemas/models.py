@@ -38,3 +38,10 @@ class Court(BaseModel):
     precio: float
     fecha: datetime
 
+
+class PaginatedCourts(BaseModel):
+    items: list[Court]
+    total: int
+    page: int
+    page_size: int
+

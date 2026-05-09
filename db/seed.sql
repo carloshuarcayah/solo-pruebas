@@ -1,0 +1,16 @@
+INSERT INTO Canchas (nombre, ubicacion, disponible, cantidad_jugadores, precio, fecha) VALUES
+    ('Cancha San Borja',              'Av. Aviación 1234, San Borja',         TRUE,  10, 80.00,  '2026-05-10 18:00:00-05'),
+    ('Cancha Miraflores Centro',      'Av. Larco 567, Miraflores',            TRUE,  14, 120.00, '2026-05-10 19:00:00-05'),
+    ('Cancha San Isidro',             'Calle Las Begonias 890, San Isidro',   FALSE, 22, 200.00, '2026-05-11 20:00:00-05'),
+    ('Cancha Surco Pueblo',           'Av. Caminos del Inca 321, Surco',      TRUE,  10, 70.00,  '2026-05-11 17:00:00-05'),
+    ('Cancha La Molina',              'Av. La Molina 1500, La Molina',        TRUE,  12, 90.00,  '2026-05-12 18:00:00-05'),
+    ('Cancha Barranco Sur',           'Jr. Unión 234, Barranco',              TRUE,  8,  60.00,  '2026-05-12 16:00:00-05'),
+    ('Estadio Municipal Chorrillos',  'Av. Defensores del Morro 789, Chorrillos', FALSE, 22, 180.00, '2026-05-13 21:00:00-05'),
+    ('Complejo Jesús María',          'Av. Brasil 1010, Jesús María',         TRUE,  16, 110.00, '2026-05-13 19:00:00-05'),
+    ('Cancha Lince Norte',            'Av. Arenales 2200, Lince',             TRUE,  6,  50.00,  '2026-05-14 15:00:00-05'),
+    ('Cancha Magdalena del Mar',      'Av. Javier Prado 3030, Magdalena',     TRUE,  10, 75.00,  '2026-05-14 18:00:00-05'),
+    ('Cancha San Miguel',             'Av. La Marina 4040, San Miguel',       TRUE,  12, 85.00,  '2026-05-15 20:00:00-05'),
+    ('Estadio La Victoria',           'Jr. Iquitos 555, La Victoria',         FALSE, 22, 150.00, '2026-05-15 17:00:00-05'),
+    ('Coliseo Callao',                'Av. Sáenz Peña 999, Callao',           TRUE,  14, 100.00, '2026-05-16 19:00:00-05'),
+    ('Cancha Sintética Los Olivos',   'Av. Antúnez de Mayolo 1212, Los Olivos', TRUE, 8, 65.00,  '2026-05-16 16:00:00-05'),
+    ('Cancha Pueblo Libre',           'Av. Bolívar 808, Pueblo Libre',        TRUE,  10, 95.00,  '2026-05-17 18:00:00-05');

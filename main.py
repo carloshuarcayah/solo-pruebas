@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from app.model.connection import get_connection
-from app.schemas.models import User, UserResponse, LoginRequest, TokenResponse, Court
+from app.schemas.models import User, UserResponse, LoginRequest, TokenResponse, Court, PaginatedCourts
 from app.auth.jwt_handler import hash_password, verify_password, create_access_token, get_current_user
 from loguru import logger
 
@@ -75,22 +75,58 @@ async def get_user_information(current_user: dict = Depends(get_current_user)):
         await connection.close()
 
 
-@app.get("/courts/", response_model=list[Court])
-async def get_all_courts_ordered_by_price():
+@app.get("/courts/", response_model=PaginatedCourts)
+async def get_courts(
+    search: str | None = Query(None, description="Buscar por nombre"),
+    precio_max: float | None = Query(None, ge=0),
+    capacidad_min: int | None = Query(None, ge=0),
+    disponible: bool | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    where = []
+    params: list = []
+
+    if search:
+        params.append(f"%{search}%")
+        where.append(f"nombre ILIKE ${len(params)}")
+    if precio_max is not None:
+        params.append(precio_max)
+        where.append(f"precio <= ${len(params)}")
+    if capacidad_min is not None:
+        params.append(capacidad_min)
+        where.append(f"cantidad_jugadores >= ${len(params)}")
+    if disponible is not None:
+        params.append(disponible)
+        where.append(f"disponible = ${len(params)}")
+
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+
     connection = await get_connection()
     try:
+        total = await connection.fetchval(
+            f"SELECT COUNT(*) FROM Canchas {where_sql}",
+            *params,
+        )
+        offset = (page - 1) * page_size
+        limit_idx = len(params) + 1
+        offset_idx = len(params) + 2
         rows = await connection.fetch(
-            """
+            f"""
             SELECT id, nombre, ubicacion, disponible, cantidad_jugadores, precio, fecha
             FROM Canchas
+            {where_sql}
             ORDER BY precio ASC
-            """
+            LIMIT ${limit_idx} OFFSET ${offset_idx}
+            """,
+            *params, page_size, offset,
         )
-        if not rows:
-            raise HTTPException(status_code=404, detail="No se encontraron canchas")
-        return [dict(row) for row in rows]
-    except HTTPException:
-        raise
+        return {
+            "items": [dict(row) for row in rows],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
     except Exception as e:
         logger.error(f"Error al obtener las canchas: {e}")
         raise HTTPException(status_code=500, detail=f"Error al obtener las canchas: {e}")
