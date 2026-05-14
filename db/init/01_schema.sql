@@ -21,3 +21,19 @@ CREATE TABLE IF NOT EXISTS Canchas (
 );
 
 CREATE INDEX IF NOT EXISTS idx_canchas_nombre ON Canchas(LOWER(nombre));
+
+CREATE TABLE IF NOT EXISTS Reservas (
+    id              SERIAL PRIMARY KEY,
+    usuario_id      INT NOT NULL REFERENCES Usuarios(id) ON DELETE CASCADE,
+    cancha_id       INT NOT NULL REFERENCES Canchas(id) ON DELETE CASCADE,
+    fecha_reserva   DATE NOT NULL,
+    hora_inicio     TIME NOT NULL,
+    hora_fin        TIME NOT NULL,
+    estado          VARCHAR(20) NOT NULL DEFAULT 'pendiente'
+                    CHECK (estado IN ('pendiente', 'confirmada', 'cancelada')),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (hora_fin > hora_inicio)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reservas_usuario ON Reservas(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_reservas_cancha_fecha ON Reservas(cancha_id, fecha_reserva);

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, EmailStr
-from datetime import datetime
+from pydantic import BaseModel, Field, EmailStr, model_validator
+from datetime import datetime, date, time
 
 
 
@@ -44,4 +44,28 @@ class PaginatedCourts(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ReservaCreate(BaseModel):
+    cancha_id: int = Field(..., gt=0)
+    fecha_reserva: date
+    hora_inicio: time
+    hora_fin: time
+
+    @model_validator(mode='after')
+    def validar_rango_horario(self) -> 'ReservaCreate':
+        if self.hora_fin <= self.hora_inicio:
+            raise ValueError('La hora de fin debe ser posterior a la hora de inicio')
+        return self
+
+
+class ReservaResponse(BaseModel):
+    id: int
+    usuario_id: int
+    cancha_id: int
+    fecha_reserva: date
+    hora_inicio: time
+    hora_fin: time
+    estado: str
+    created_at: datetime
 

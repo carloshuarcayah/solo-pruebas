@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from app.model.connection import get_connection
-from app.schemas.models import User, UserResponse, LoginRequest, TokenResponse, Court, PaginatedCourts
+from app.schemas.models import User, UserResponse, LoginRequest, TokenResponse, Court, PaginatedCourts, ReservaCreate, ReservaResponse
 from app.auth.jwt_handler import hash_password, verify_password, create_access_token, get_current_user
 from loguru import logger
 
@@ -181,5 +181,157 @@ async def get_court_information(court_name: str):
     except Exception as e:
         logger.error(f"Error al obtener la información de la cancha: {e}")
         raise HTTPException(status_code=500, detail=f"Error al obtener la información de la cancha: {e}")
+    finally:
+        await connection.close()
+
+
+@app.post("/reservas/", response_model=ReservaResponse, status_code=201)
+async def crear_reserva(
+    reserva: ReservaCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    connection = await get_connection()
+    try:
+        cancha = await connection.fetchrow(
+            "SELECT id FROM Canchas WHERE id = $1",
+            reserva.cancha_id,
+        )
+        if not cancha:
+            raise HTTPException(status_code=404, detail="La cancha solicitada no existe")
+
+        conflicto = await connection.fetchrow(
+            """
+            SELECT id FROM Reservas
+            WHERE cancha_id = $1
+              AND fecha_reserva = $2
+              AND estado IN ('pendiente', 'confirmada')
+              AND hora_inicio < $4
+              AND hora_fin   > $3
+            """,
+            reserva.cancha_id,
+            reserva.fecha_reserva,
+            reserva.hora_inicio,
+            reserva.hora_fin,
+        )
+        if conflicto:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El horario de {reserva.hora_inicio} a {reserva.hora_fin} ya está reservado para esa cancha en esa fecha",
+            )
+
+        row = await connection.fetchrow(
+            """
+            INSERT INTO Reservas (usuario_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado)
+            VALUES ($1, $2, $3, $4, $5, 'pendiente')
+            RETURNING id, usuario_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, created_at
+            """,
+            int(current_user["sub"]),
+            reserva.cancha_id,
+            reserva.fecha_reserva,
+            reserva.hora_inicio,
+            reserva.hora_fin,
+        )
+        return dict(row)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al crear la reserva: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al crear la reserva: {e}")
+    finally:
+        await connection.close()
+
+
+@app.put("/reservas/{reserva_id}/confirmar", response_model=ReservaResponse)
+async def confirmar_reserva(
+    reserva_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    connection = await get_connection()
+    try:
+        reserva = await connection.fetchrow(
+            "SELECT id, usuario_id, estado FROM Reservas WHERE id = $1",
+            reserva_id,
+        )
+        if not reserva:
+            raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+        if reserva["usuario_id"] != int(current_user["sub"]):
+            raise HTTPException(status_code=403, detail="No tienes permiso para confirmar esta reserva")
+
+        if reserva["estado"] != "pendiente":
+            raise HTTPException(
+                status_code=400,
+                detail=f"La reserva no puede confirmarse porque su estado actual es '{reserva['estado']}'",
+            )
+
+        row = await connection.fetchrow(
+            """
+            UPDATE Reservas
+            SET estado = 'confirmada'
+            WHERE id = $1
+            RETURNING id, usuario_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, created_at
+            """,
+            reserva_id,
+        )
+        return dict(row)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al confirmar la reserva: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al confirmar la reserva: {e}")
+    finally:
+        await connection.close()
+
+
+@app.get("/reservas/mis-reservas", response_model=list[ReservaResponse])
+async def mis_reservas(current_user: dict = Depends(get_current_user)):
+    connection = await get_connection()
+    try:
+        rows = await connection.fetch(
+            """
+            SELECT id, usuario_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, created_at
+            FROM Reservas
+            WHERE usuario_id = $1
+            ORDER BY fecha_reserva ASC, hora_inicio ASC
+            """,
+            int(current_user["sub"]),
+        )
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Error al obtener las reservas: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener las reservas: {e}")
+    finally:
+        await connection.close()
+
+
+@app.delete("/reservas/{reserva_id}", status_code=204)
+async def cancelar_reserva(
+    reserva_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    connection = await get_connection()
+    try:
+        reserva = await connection.fetchrow(
+            "SELECT id, usuario_id, estado FROM Reservas WHERE id = $1",
+            reserva_id,
+        )
+        if not reserva:
+            raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+        if reserva["usuario_id"] != int(current_user["sub"]):
+            raise HTTPException(status_code=403, detail="No tienes permiso para cancelar esta reserva")
+
+        if reserva["estado"] == "cancelada":
+            raise HTTPException(status_code=400, detail="La reserva ya está cancelada")
+
+        await connection.execute(
+            "UPDATE Reservas SET estado = 'cancelada' WHERE id = $1",
+            reserva_id,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al cancelar la reserva: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al cancelar la reserva: {e}")
     finally:
         await connection.close()
