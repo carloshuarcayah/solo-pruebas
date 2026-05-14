@@ -225,7 +225,7 @@ async def crear_reserva(
             VALUES ($1, $2, $3, $4, $5, 'pendiente')
             RETURNING id, usuario_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, created_at
             """,
-            int(current_user["sub"]),
+            current_user["user_id"],
             reserva.cancha_id,
             reserva.fecha_reserva,
             reserva.hora_inicio,
@@ -255,7 +255,7 @@ async def confirmar_reserva(
         if not reserva:
             raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
-        if reserva["usuario_id"] != int(current_user["sub"]):
+        if reserva["usuario_id"] != current_user["user_id"]:
             raise HTTPException(status_code=403, detail="No tienes permiso para confirmar esta reserva")
 
         if reserva["estado"] != "pendiente":
@@ -294,7 +294,7 @@ async def mis_reservas(current_user: dict = Depends(get_current_user)):
             WHERE usuario_id = $1
             ORDER BY fecha_reserva ASC, hora_inicio ASC
             """,
-            int(current_user["sub"]),
+            current_user["user_id"],
         )
         return [dict(row) for row in rows]
     except Exception as e:
@@ -318,7 +318,7 @@ async def cancelar_reserva(
         if not reserva:
             raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
-        if reserva["usuario_id"] != int(current_user["sub"]):
+        if reserva["usuario_id"] != current_user["user_id"]:
             raise HTTPException(status_code=403, detail="No tienes permiso para cancelar esta reserva")
 
         if reserva["estado"] == "cancelada":
